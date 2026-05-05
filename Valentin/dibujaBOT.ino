@@ -18,37 +18,68 @@
 // ========================================================
 
 // 1. SELECTOR DE FIGURA (1 = Triángulo | 2 = Cuadrado | 3 = Rectángulo)
-int figura_a_dibujar = 1; 
+int figura_a_dibujar = 3; 
 
-// 2. Velocidad General del Robot (0 a 255)
-int velocidad_movimiento = 180;
+// 2. VELOCIDADES INDEPENDIENTES POR LÍNEA (0 a 255)
+// Si el robot tiene menos fuerza hacia atrás o hacia un lado, sube su velocidad aquí.
 
-// ========================================================
-// ================= CALIBRACIÓN FÍSICA ===================
-// ========================================================
-// ¿Cuántos milisegundos tarda en hacer 1 CM real? 
-// Ajusta estos 3 valores por separado si ves que patina o se queda corto.
+// --- Velocidades TRIÁNGULO ---
+int vel_tri_adelante   = 100;
+int vel_tri_diag_der   = 100;
+int vel_tri_diag_izq   = 100;
 
-float ms_cm_frente_atras = 35.0; // Calibración para ir recto
-float ms_cm_diagonal     = 48.0; // Calibración para diagonales (Triángulo)
-float ms_cm_lateral      = 45.0; // Calibración para ir de lado puro (Cuadr/Rect)
+// --- Velocidades CUADRADO ---
+int vel_cuad_adelante  = 75;
+int vel_cuad_derecha   = 75; // Strafe
+int vel_cuad_atras     = 85; // Ejemplo: un poco más alta si le cuesta ir hacia atrás
+int vel_cuad_izquierda = 75; // Strafe
+
+// --- Velocidades RECTÁNGULO ---
+int vel_rect_adelante  = 75;
+int vel_rect_derecha   = 75;
+int vel_rect_atras     = 85; 
+int vel_rect_izquierda = 75;
+
+
+// 3. Pausa en las esquinas (En milisegundos. 500 = medio segundo)
+int tiempo_espera_esquinas = 500; 
+
 
 // ========================================================
 // ============= MEDIDAS INDEPENDIENTES (CM) ==============
 // ========================================================
+// Al tener velocidades distintas, es posible que necesites 
+// pedirle más o menos CM a un lado específico para que cierre bien.
 
 // --- TRIÁNGULO ---
-float tri_lado_recto    = 30.0; // Hacia adelante
-float tri_diagonal_der  = 30.0; // Hacia abajo-derecha
-float tri_diagonal_izq  = 30.0; // Hacia abajo-izquierda
+float tri_adelante   = 25.0; 
+float tri_diag_der   = 35.0; 
+float tri_diag_izq   = 35.0; 
 
-// --- CUADRADO ---
-float cuad_frente_atras = 20.0; // Lados que van hacia adelante y atrás
-float cuad_lados        = 20.0; // Lados que van hacia izquierda y derecha
+// --- CUADRADO (Objetivo: 20x20 cm) ---
+float cuad_adelante  = 20.0; 
+float cuad_derecha   = 20.0; 
+float cuad_atras     = 20.0; 
+float cuad_izquierda = 20.0; 
 
-// --- RECTÁNGULO ---
-float rect_frente_atras = 30.0; // Lados largos
-float rect_lados        = 10.0; // Lados cortos
+// --- RECTÁNGULO (Objetivo: 28x12 cm) ---
+float rect_adelante  = 32.0; 
+float rect_derecha   = 22.0; 
+float rect_atras     = 27.0; 
+float rect_izquierda = 22.0; 
+
+// ========================================================
+// ================= CALIBRACIÓN FÍSICA ===================
+// ========================================================
+
+// --- Calibración TRIÁNGULO ---
+float ms_cm_frente_triangulo = 21.0; 
+float ms_cm_diagonal         = 35.0; 
+float compensacion_angulo_tri = 0.60; 
+
+// --- Calibración CUADRADO y RECTÁNGULO ---
+float ms_cm_frente_cuad_rect = 28.0; 
+float ms_cm_lateral          = 43.3; 
 
 // ========================================================
 
@@ -62,90 +93,92 @@ void setup() {
   pinMode(speedPinLB, OUTPUT); pinMode(speedPinRB, OUTPUT);
 
   stop_Stop();
-  delay(5000); // 5 segundos para ponerlo en el suelo
 
   if (figura_a_dibujar == 1) { dibujarTriangulo(); } 
   else if (figura_a_dibujar == 2) { dibujarCuadrado(); } 
   else if (figura_a_dibujar == 3) { dibujarRectangulo(); }
 }
 
-void loop() {
-  // Vacío. Dibuja una vez y termina.
-}
+void loop() {}
 
 // ==========================================
 // RUTINAS DE DIBUJO HOLONÓMICO
 // ==========================================
 
 void dibujarTriangulo() {
-  int v_fuerte = velocidad_movimiento;
-  int v_suave = velocidad_movimiento * 0.268; // Proporción matemática exacta para 120 grados
-
-  // Calculamos los tiempos usando las calibraciones y medidas separadas
-  int t_lado_1 = tri_lado_recto * ms_cm_frente_atras;
-  int t_lado_2 = tri_diagonal_der * ms_cm_diagonal; 
-  int t_lado_3 = tri_diagonal_izq * ms_cm_diagonal;
-
   // LADO 1: ADELANTE
-  setMotors(v_fuerte, v_fuerte, v_fuerte, v_fuerte);
+  int t_lado_1 = tri_adelante * ms_cm_frente_triangulo;
+  setMotors(vel_tri_adelante, vel_tri_adelante, vel_tri_adelante, vel_tri_adelante);
   delay(t_lado_1);
-  stop_Stop(); delay(300); 
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // LADO 2: DIAGONAL ABAJO-DERECHA
-  setMotors(v_suave, -v_fuerte, -v_fuerte, v_suave);
+  int t_lado_2 = tri_diag_der * ms_cm_diagonal; 
+  int v2_fuerte = vel_tri_diag_der;
+  int v2_suave = vel_tri_diag_der * compensacion_angulo_tri; 
+  setMotors(v2_suave, -v2_fuerte, -v2_fuerte, v2_suave);
   delay(t_lado_2);
-  stop_Stop(); delay(300);
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // LADO 3: DIAGONAL ABAJO-IZQUIERDA
-  setMotors(-v_fuerte, v_suave, v_suave, -v_fuerte);
+  int t_lado_3 = tri_diag_izq * ms_cm_diagonal;
+  int v3_fuerte = vel_tri_diag_izq;
+  int v3_suave = vel_tri_diag_izq * compensacion_angulo_tri;
+  setMotors(-v3_fuerte, v3_suave, v3_suave, -v3_fuerte);
   delay(t_lado_3);
   stop_Stop();
 }
 
 void dibujarCuadrado() {
-  int v = velocidad_movimiento;
-  
-  int t_frente = cuad_frente_atras * ms_cm_frente_atras;
-  int t_lados = cuad_lados * ms_cm_lateral;
-
   // 1: ADELANTE
-  setMotors(v, v, v, v);
-  delay(t_frente); stop_Stop(); delay(300);
+  int t_frente = cuad_adelante * ms_cm_frente_cuad_rect;
+  setMotors(vel_cuad_adelante, vel_cuad_adelante, vel_cuad_adelante, vel_cuad_adelante);
+  delay(t_frente); 
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // 2: DERECHA (Strafe Right)
-  setMotors(v, -v, -v, v);
-  delay(t_lados); stop_Stop(); delay(300);
+  int t_der = cuad_derecha * ms_cm_lateral;
+  setMotors(vel_cuad_derecha, -vel_cuad_derecha, -vel_cuad_derecha, vel_cuad_derecha);
+  delay(t_der); 
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // 3: ATRÁS
-  setMotors(-v, -v, -v, -v);
-  delay(t_frente); stop_Stop(); delay(300);
+  int t_atras = cuad_atras * ms_cm_frente_cuad_rect;
+  setMotors(-vel_cuad_atras, -vel_cuad_atras, -vel_cuad_atras, -vel_cuad_atras);
+  delay(t_atras); 
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // 4: IZQUIERDA (Strafe Left)
-  setMotors(-v, v, v, -v);
-  delay(t_lados); stop_Stop();
+  int t_izq = cuad_izquierda * ms_cm_lateral;
+  setMotors(-vel_cuad_izquierda, vel_cuad_izquierda, vel_cuad_izquierda, -vel_cuad_izquierda);
+  delay(t_izq); 
+  stop_Stop();
 }
 
 void dibujarRectangulo() {
-  int v = velocidad_movimiento;
-  
-  int t_frente = rect_frente_atras * ms_cm_frente_atras;
-  int t_lados = rect_lados * ms_cm_lateral;
-
   // 1: ADELANTE
-  setMotors(v, v, v, v);
-  delay(t_frente); stop_Stop(); delay(300);
+  int t_frente = rect_adelante * ms_cm_frente_cuad_rect;
+  setMotors(vel_rect_adelante, vel_rect_adelante, vel_rect_adelante, vel_rect_adelante);
+  delay(t_frente); 
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // 2: DERECHA
-  setMotors(v, -v, -v, v);
-  delay(t_lados); stop_Stop(); delay(300);
+  int t_der = rect_derecha * ms_cm_lateral;
+  setMotors(vel_rect_derecha, -vel_rect_derecha, -vel_rect_derecha, vel_rect_derecha);
+  delay(t_der); 
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // 3: ATRÁS
-  setMotors(-v, -v, -v, -v);
-  delay(t_frente); stop_Stop(); delay(300);
+  int t_atras = rect_atras * ms_cm_frente_cuad_rect;
+  setMotors(-vel_rect_atras, -vel_rect_atras, -vel_rect_atras, -vel_rect_atras);
+  delay(t_atras); 
+  if (tiempo_espera_esquinas > 0) { stop_Stop(); delay(tiempo_espera_esquinas); }
 
   // 4: IZQUIERDA
-  setMotors(-v, v, v, -v);
-  delay(t_lados); stop_Stop();
+  int t_izq = rect_izquierda * ms_cm_lateral;
+  setMotors(-vel_rect_izquierda, vel_rect_izquierda, vel_rect_izquierda, -vel_rect_izquierda);
+  delay(t_izq); 
+  stop_Stop();
 }
 
 // ==========================================
@@ -181,4 +214,4 @@ void setMotors(int FL, int FR, int RL, int RR) {
 
 void stop_Stop() {
   setMotors(0, 0, 0, 0);
-}0.
+}
